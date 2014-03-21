@@ -1,5 +1,5 @@
-# Use system nspr/nss?
-%define system_nss        1
+# Use system nss/nspr?
+%define system_nss        0
 
 # Use system sqlite?
 %if 0%{?fedora} < 19
@@ -30,13 +30,13 @@
 # Minimal required versions
 %global cairo_version 1.10.2
 %global freetype_version 2.1.9
-%global libnotify_version 0.7.0
-%global libvpx_version 1.0.0
+%global libnotify_version 0.5.0
+%global libvpx_version 0.9.0
 
 %if %{?system_nss}
 %global nspr_version 4.10.2
 %global nspr_build_version %(pkg-config --silence-errors --modversion nspr 2>/dev/null || echo 65536)
-%global nss_version 3.15.4
+%global nss_version 3.15.3
 %global nss_build_version %(pkg-config --silence-errors --modversion nss 2>/dev/null || echo 65536)
 %endif
 
@@ -62,11 +62,8 @@
 
 %define official_branding       1
 %define build_langpacks         1
-%ifarch %{ix86} x86_64
-%define enable_mozilla_crashreporter       1
-%else
-%define enable_mozilla_crashreporter       0
-%endif
+# don't enable crash reporter for remi repo
+%global enable_mozilla_crashreporter 0
 
 %if %{alpha_version} > 0
 %global pre_version a%{alpha_version}
@@ -165,6 +162,10 @@ Requires:       nss >= %{nss_build_version}
 
 BuildRequires:  desktop-file-utils
 BuildRequires:  system-bookmarks
+%if 0%{?rhel} == 6
+BuildRequires:   python27
+BuildRequires:   devtoolset-2-toolchain
+%endif
 %if %{?enable_gstreamer}
 BuildRequires:  gstreamer-devel
 BuildRequires:  gstreamer-plugins-base-devel
@@ -248,6 +249,8 @@ echo "ac_add_options --with-system-nss" >> .mozconfig
 %else
 echo "ac_add_options --without-system-nspr" >> .mozconfig
 echo "ac_add_options --without-system-nss" >> .mozconfig
+echo "ac_add_options --without-system-libvpx" >> .mozconfig
+echo "ac_add_options --without-system-libvpx" >> .mozconfig
 %endif
 
 %if %{?system_sqlite}
@@ -330,6 +333,10 @@ echo "ac_add_options --disable-crashreporter" >> .mozconfig
 #---------------------------------------------------------------------
 
 %build
+%if 0%{?rhel} == 6
+. /opt/rh/python27/enable
+. /opt/rh/devtoolset-2/enable
+%endif
 %if %{?system_sqlite}
 # Do not proceed with build if the sqlite require would be broken:
 # make sure the minimum requirement is non-empty, ...
@@ -392,6 +399,10 @@ make -C objdir buildsymbols
 #---------------------------------------------------------------------
 
 %install
+%if 0%{?rhel} == 6
+. /opt/rh/python27/enable
+. /opt/rh/devtoolset-2/enable
+%endif
 cd %{tarballdir}
 
 # set up our prefs and add it to the package manifest file, so it gets pulled in
@@ -488,7 +499,7 @@ create_default_langpack "zh-TW" "zh"
 
 # Keep compatibility with the old preference location 
 # on Fedora 18 and earlier
-%if 0%{?fedora} < 19
+%if 0%{?fedora} < 19 && 0%{?rhel} < 6
 %{__mkdir_p} $RPM_BUILD_ROOT/%{mozappdir}/defaults/preferences
 %{__mkdir_p} $RPM_BUILD_ROOT/%{mozappdir}/browser/defaults
 ln -s %{mozappdir}/defaults/preferences $RPM_BUILD_ROOT/%{mozappdir}/browser/defaults/preferences
@@ -520,6 +531,17 @@ rm -f ${RPM_BUILD_ROOT}%{mozappdirdev}/sdk/lib/libmozjs.so
 rm -f ${RPM_BUILD_ROOT}%{mozappdirdev}/sdk/lib/libmozalloc.so
 rm -f ${RPM_BUILD_ROOT}%{mozappdirdev}/sdk/lib/libxul.so
 #---------------------------------------------------------------------
+
+%pre
+echo -e "\nWARNING : This %{name} %{version} %{?mycomment} RPM is not an official"
+echo -e "Fedora / Red Hat build and it overrides the official one."
+echo -e "Don't file bugs on Fedora Project nor Red Hat.\n"
+echo -e "Use dedicated forums http://forums.famillecollet.com/\n"
+
+%if %{?fedora}%{!?fedora:99} <= 17
+echo -e "WARNING : Fedora %{fedora} is now EOL :"
+echo -e "You should consider upgrading to a supported release.\n"
+%endif
 
 # Moves defaults/preferences to browser/defaults/preferences in Fedora 19+
 %if 0%{?fedora} >= 19
@@ -611,6 +633,7 @@ gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
 %{mozappdir}/browser/crashreporter-override.ini
 %endif
 %{mozappdir}/*.so
+%{mozappdir}/*.chk
 %{mozappdir}/chrome.manifest
 %{mozappdir}/components
 %{mozappdir}/defaults/pref/channel-prefs.js
