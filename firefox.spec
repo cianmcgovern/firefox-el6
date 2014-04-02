@@ -62,7 +62,7 @@
 
 %define official_branding       1
 %define build_langpacks         1
-# don't enable crash reporter for remi repo
+# don't enable crash reporter
 %global enable_mozilla_crashreporter 0
 
 %if %{alpha_version} > 0
@@ -83,7 +83,7 @@
 Summary:        Mozilla Firefox Web browser
 Name:           firefox
 Version:        28.0
-Release:        1%{?pre_tag}%{?dist}
+Release:        2%{?pre_tag}%{?dist}
 URL:            http://www.mozilla.org/projects/firefox/
 License:        MPLv1.1 or GPLv2+ or LGPLv2+
 Group:          Applications/Internet
@@ -164,7 +164,7 @@ BuildRequires:  desktop-file-utils
 BuildRequires:  system-bookmarks
 %if 0%{?rhel} == 6
 BuildRequires:   python27
-BuildRequires:   devtoolset-2-toolchain
+BuildRequires:   devtoolset-2-gcc
 %endif
 %if %{?enable_gstreamer}
 BuildRequires:  gstreamer-devel
@@ -536,7 +536,6 @@ rm -f ${RPM_BUILD_ROOT}%{mozappdirdev}/sdk/lib/libxul.so
 echo -e "\nWARNING : This %{name} %{version} %{?mycomment} RPM is not an official"
 echo -e "Fedora / Red Hat build and it overrides the official one."
 echo -e "Don't file bugs on Fedora Project nor Red Hat.\n"
-echo -e "Use dedicated forums http://forums.famillecollet.com/\n"
 
 %if %{?fedora}%{!?fedora:99} <= 17
 echo -e "WARNING : Fedora %{fedora} is now EOL :"
@@ -650,6 +649,9 @@ gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
 #---------------------------------------------------------------------
 
 %changelog
+* Tue Apr 01 2014 Cian Mc Govern <cian@cianmcgovern.com> - 28.0-2
+- Update for EL6
+
 * Tue Mar 18 2014 Martin Stransky <stransky@redhat.com> - 28.0-1
 - Update to 28.0
 
