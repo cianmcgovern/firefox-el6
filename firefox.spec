@@ -34,7 +34,7 @@
 %global libvpx_version 1.0.0
 
 %if %{?system_nss}
-%global nspr_version 4.10.2
+%global nspr_version 4.10.3
 %global nspr_build_version %(pkg-config --silence-errors --modversion nspr 2>/dev/null || echo 65536)
 %global nss_version 3.15.4
 %global nss_build_version %(pkg-config --silence-errors --modversion nss 2>/dev/null || echo 65536)
@@ -83,16 +83,17 @@
 %global tarballdir  mozilla-release
 %endif
 
+
 Summary:        Mozilla Firefox Web browser
 Name:           firefox
-Version:        28.0
-Release:        1%{?pre_tag}%{?dist}
+Version:        29.0
+Release:        3%{?pre_tag}%{?dist}
 URL:            http://www.mozilla.org/projects/firefox/
 License:        MPLv1.1 or GPLv2+ or LGPLv2+
 Group:          Applications/Internet
 Source0:        ftp://ftp.mozilla.org/pub/firefox/releases/%{version}%{?pre_version}/source/firefox-%{version}%{?pre_version}.source.tar.bz2
 %if %{build_langpacks}
-Source1:        firefox-langpacks-%{version}%{?pre_version}-20140318.tar.xz
+Source1:        firefox-langpacks-%{version}%{?pre_version}-20140422.tar.xz
 %endif
 Source10:       firefox-mozconfig
 Source11:       firefox-mozconfig-branded
@@ -104,8 +105,6 @@ Source23:       firefox.1
 #Build patches
 Patch0:         firefox-install-dir.patch
 Patch3:         mozilla-build-arm.patch
-Patch14:        xulrunner-2.0-chromium-types.patch
-Patch17:        xulrunner-24.0-gcc47.patch
 # https://bugzilla.redhat.com/show_bug.cgi?id=814879#c3
 Patch18:        xulrunner-24.0-jemalloc-ppc.patch
 # workaround linking issue on s390 (JSContext::updateMallocCounter(size_t) not found)
@@ -118,6 +117,7 @@ Patch215:        firefox-15.0-enable-addons.patch
 Patch216:        firefox-duckduckgo.patch
 
 # Upstream patches
+Patch300:        mozilla-ppc64le.patch
 
 %if %{official_branding}
 # Required by Mozilla Corporation
@@ -156,6 +156,7 @@ BuildRequires:  libcurl-devel
 BuildRequires:  libvpx-devel >= %{libvpx_version}
 BuildRequires:  autoconf213
 BuildRequires:  pulseaudio-libs-devel
+BuildRequires:  libicu-devel
 
 Requires:       mozilla-filesystem
 %if %{?system_nss}
@@ -215,9 +216,9 @@ cd %{tarballdir}
 # ignored during this compare.
 %patch0 -p1
 
+%ifarch %{arm}
 %patch3  -p2 -b .arm
-%patch14 -p2 -b .chromium-types
-%patch17 -p1 -b .gcc47
+%endif
 %patch18 -p2 -b .jemalloc-ppc
 %patch19 -p2 -b .s390-inlines
 
@@ -229,6 +230,11 @@ cd %{tarballdir}
 %patch216 -p1 -b .duckduckgo
 
 # Upstream patches
+%ifarch ppc64le
+%if 0%{?fedora} > 20
+%patch300 -p1 -b .ppc64le
+%endif
+%endif
 
 %if %{official_branding}
 # Required by Mozilla Corporation
@@ -312,11 +318,9 @@ echo "ac_add_options --with-float-abi=soft" >> .mozconfig
 echo "ac_add_options --disable-elf-hack" >> .mozconfig
 %endif
 
-%ifnarch %{ix86} x86_64 armv7hl armv7hnl
-echo "ac_add_options --disable-methodjit" >> .mozconfig
-echo "ac_add_options --disable-monoic" >> .mozconfig
-echo "ac_add_options --disable-polyic" >> .mozconfig
-echo "ac_add_options --disable-tracejit" >> .mozconfig
+%ifnarch %{ix86} x86_64
+echo "ac_add_options --disable-ion" >> .mozconfig
+echo "ac_add_options --disable-yarr-jit" >> .mozconfig
 %endif
 
 %ifnarch %{ix86} x86_64 armv7hl armv7hnl
@@ -372,7 +376,7 @@ export LIBDIR='%{_libdir}'
 MOZ_SMP_FLAGS=-j1
 # On x86 architectures, Mozilla can build up to 4 jobs at once in parallel,
 # however builds tend to fail on other arches when building in parallel.
-%ifarch %{ix86} x86_64 ppc ppc64
+%ifarch %{ix86} x86_64 ppc ppc64 ppc64le
 [ -z "$RPM_BUILD_NCPUS" ] && \
      RPM_BUILD_NCPUS="`/usr/bin/getconf _NPROCESSORS_ONLN`"
 [ "$RPM_BUILD_NCPUS" -ge 2 ] && MOZ_SMP_FLAGS=-j2
@@ -510,6 +514,9 @@ ln -s %{_datadir}/myspell ${RPM_BUILD_ROOT}%{mozappdir}/dictionaries
 # Enable crash reporter for Firefox application
 %if %{enable_mozilla_crashreporter}
 sed -i -e "s/\[Crash Reporter\]/[Crash Reporter]\nEnabled=1/" $RPM_BUILD_ROOT/%{mozappdir}/application.ini
+# Add debuginfo for crash-stats.mozilla.com
+%{__mkdir_p} $RPM_BUILD_ROOT/%{moz_debug_dir}
+%{__cp} objdir/dist/%{symbols_file_name} $RPM_BUILD_ROOT/%{moz_debug_dir}
 %endif
 
 # Default 
@@ -627,6 +634,24 @@ gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
 #---------------------------------------------------------------------
 
 %changelog
+* Fri Apr 25 2014 Martin Stransky <stransky@redhat.com> - 29.0-3
+- Build with system ICU
+
+* Thu Apr 24 2014 Martin Stransky <stransky@redhat.com> - 29.0-2
+- Removed unused patch
+
+* Tue Apr 22 2014 Martin Stransky <stransky@redhat.com> - 29.0-1
+- Update to 29.0 Build 1
+
+* Tue Apr  8 2014 Jan Horak <jhorak@redhat.com> - 28.0-4
+- Support for ppc64le architecture
+
+* Wed Mar 19 2014 Martin Stransky <stransky@redhat.com> - 28.0-3
+- Arm build fix
+
+* Wed Mar 19 2014 Martin Stransky <stransky@redhat.com> - 28.0-2
+- NSS version up, disable arm for now
+
 * Tue Mar 18 2014 Martin Stransky <stransky@redhat.com> - 28.0-1
 - Update to 28.0
 
