@@ -102,8 +102,6 @@ Source23:       firefox.1
 #Build patches
 Patch0:         firefox-install-dir.patch
 Patch3:         mozilla-build-arm.patch
-Patch14:        xulrunner-2.0-chromium-types.patch
-Patch17:        xulrunner-24.0-gcc47.patch
 # https://bugzilla.redhat.com/show_bug.cgi?id=814879#c3
 Patch18:        xulrunner-24.0-jemalloc-ppc.patch
 # workaround linking issue on s390 (JSContext::updateMallocCounter(size_t) not found)
