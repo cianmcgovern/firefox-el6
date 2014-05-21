@@ -1,6 +1,3 @@
-# Build for arm architecture?
-%define disable_arm       1
-
 # Use system nspr/nss?
 %define system_nss        1
 
@@ -89,14 +86,14 @@
 
 Summary:        Mozilla Firefox Web browser
 Name:           firefox
-Version:        28.0
-Release:        3%{?pre_tag}%{?dist}
+Version:        29.0.1
+Release:        4%{?pre_tag}%{?dist}
 URL:            http://www.mozilla.org/projects/firefox/
 License:        MPLv1.1 or GPLv2+ or LGPLv2+
 Group:          Applications/Internet
 Source0:        ftp://ftp.mozilla.org/pub/firefox/releases/%{version}%{?pre_version}/source/firefox-%{version}%{?pre_version}.source.tar.bz2
 %if %{build_langpacks}
-Source1:        firefox-langpacks-%{version}%{?pre_version}-20140318.tar.xz
+Source1:        firefox-langpacks-%{version}%{?pre_version}-20140514.tar.xz
 %endif
 Source10:       firefox-mozconfig
 Source11:       firefox-mozconfig-branded
@@ -108,8 +105,6 @@ Source23:       firefox.1
 #Build patches
 Patch0:         firefox-install-dir.patch
 Patch3:         mozilla-build-arm.patch
-Patch14:        xulrunner-2.0-chromium-types.patch
-Patch17:        xulrunner-24.0-gcc47.patch
 # https://bugzilla.redhat.com/show_bug.cgi?id=814879#c3
 Patch18:        xulrunner-24.0-jemalloc-ppc.patch
 # workaround linking issue on s390 (JSContext::updateMallocCounter(size_t) not found)
@@ -122,6 +117,13 @@ Patch215:        firefox-15.0-enable-addons.patch
 Patch216:        firefox-duckduckgo.patch
 
 # Upstream patches
+Patch300:        mozilla-ppc64le.patch
+# mbo 962488
+Patch301:        firefox-aarch64-double-convertsion.patch
+# mbo 963023
+Patch302:        firefox-aarch64-libevent.patch
+# mbo 963024
+Patch303:        firefox-aarch64-xpcom.patch
 
 %if %{official_branding}
 # Required by Mozilla Corporation
@@ -160,6 +162,7 @@ BuildRequires:  libcurl-devel
 BuildRequires:  libvpx-devel >= %{libvpx_version}
 BuildRequires:  autoconf213
 BuildRequires:  pulseaudio-libs-devel
+BuildRequires:  libicu-devel
 
 Requires:       mozilla-filesystem
 %if %{?system_nss}
@@ -222,8 +225,6 @@ cd %{tarballdir}
 %ifarch %{arm}
 %patch3  -p2 -b .arm
 %endif
-%patch14 -p2 -b .chromium-types
-%patch17 -p1 -b .gcc47
 %patch18 -p2 -b .jemalloc-ppc
 %patch19 -p2 -b .s390-inlines
 
@@ -235,6 +236,14 @@ cd %{tarballdir}
 %patch216 -p1 -b .duckduckgo
 
 # Upstream patches
+%ifarch ppc64le
+%if 0%{?fedora} > 20
+%patch300 -p1 -b .ppc64le
+%endif
+%endif
+%patch301 -p1 -b .aarch64-dbl
+%patch302 -p1 -b .aarch64-libevent
+%patch303 -p1 -b .aarch64-xpcom
 
 %if %{official_branding}
 # Required by Mozilla Corporation
@@ -305,24 +314,23 @@ echo "ac_add_options --with-arch=armv7-a" >> .mozconfig
 echo "ac_add_options --with-float-abi=hard" >> .mozconfig
 echo "ac_add_options --with-fpu=vfpv3-d16" >> .mozconfig
 echo "ac_add_options --disable-elf-hack" >> .mozconfig
+echo "ac_add_options --disable-ion" >> .mozconfig
+echo "ac_add_options --disable-yarr-jit" >> .mozconfig
 %endif
 %ifarch armv7hnl
 echo "ac_add_options --with-arch=armv7-a" >> .mozconfig
 echo "ac_add_options --with-float-abi=hard" >> .mozconfig
 echo "ac_add_options --with-fpu=neon" >> .mozconfig
 echo "ac_add_options --disable-elf-hack" >> .mozconfig
+echo "ac_add_options --disable-ion" >> .mozconfig
+echo "ac_add_options --disable-yarr-jit" >> .mozconfig
 %endif
 %ifarch armv5tel
 echo "ac_add_options --with-arch=armv5te" >> .mozconfig
 echo "ac_add_options --with-float-abi=soft" >> .mozconfig
 echo "ac_add_options --disable-elf-hack" >> .mozconfig
-%endif
-
-%ifnarch %{ix86} x86_64 armv7hl armv7hnl
-echo "ac_add_options --disable-methodjit" >> .mozconfig
-echo "ac_add_options --disable-monoic" >> .mozconfig
-echo "ac_add_options --disable-polyic" >> .mozconfig
-echo "ac_add_options --disable-tracejit" >> .mozconfig
+echo "ac_add_options --disable-ion" >> .mozconfig
+echo "ac_add_options --disable-yarr-jit" >> .mozconfig
 %endif
 
 %ifnarch %{ix86} x86_64 armv7hl armv7hnl
@@ -349,6 +357,9 @@ esac
 
 cd %{tarballdir}
 
+# Update the various config.guess to upstream release for aarch64 support
+find ./ -name config.guess -exec cp /usr/lib/rpm/config.guess {} ';'
+
 # -fpermissive is needed to build with gcc 4.6+ which has become stricter
 # 
 # Mozilla builds with -Wall with exception of a few warnings which show up
@@ -365,7 +376,7 @@ MOZ_OPT_FLAGS=$(echo "$MOZ_OPT_FLAGS" | %{__sed} -e 's/-O2//')
 %ifarch s390
 MOZ_OPT_FLAGS=$(echo "$MOZ_OPT_FLAGS" | %{__sed} -e 's/-g/-g1/')
 %endif
-%ifarch s390 %{arm} ppc
+%ifarch s390 %{arm} ppc aarch64
 MOZ_LINK_FLAGS="-Wl,--no-keep-memory -Wl,--reduce-memory-overheads"
 %endif
 export CFLAGS=$MOZ_OPT_FLAGS
@@ -378,7 +389,7 @@ export LIBDIR='%{_libdir}'
 MOZ_SMP_FLAGS=-j1
 # On x86 architectures, Mozilla can build up to 4 jobs at once in parallel,
 # however builds tend to fail on other arches when building in parallel.
-%ifarch %{ix86} x86_64 ppc ppc64
+%ifarch %{ix86} x86_64 ppc ppc64 ppc64le aarch64
 [ -z "$RPM_BUILD_NCPUS" ] && \
      RPM_BUILD_NCPUS="`/usr/bin/getconf _NPROCESSORS_ONLN`"
 [ "$RPM_BUILD_NCPUS" -ge 2 ] && MOZ_SMP_FLAGS=-j2
@@ -516,6 +527,9 @@ ln -s %{_datadir}/myspell ${RPM_BUILD_ROOT}%{mozappdir}/dictionaries
 # Enable crash reporter for Firefox application
 %if %{enable_mozilla_crashreporter}
 sed -i -e "s/\[Crash Reporter\]/[Crash Reporter]\nEnabled=1/" $RPM_BUILD_ROOT/%{mozappdir}/application.ini
+# Add debuginfo for crash-stats.mozilla.com
+%{__mkdir_p} $RPM_BUILD_ROOT/%{moz_debug_dir}
+%{__cp} objdir/dist/%{symbols_file_name} $RPM_BUILD_ROOT/%{moz_debug_dir}
 %endif
 
 # Default 
@@ -633,6 +647,36 @@ gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
 #---------------------------------------------------------------------
 
 %changelog
+* Tue May 20 2014 Martin Stransky <stransky@redhat.com> - 29.0.1-4
+- Enabled necko-wifi
+
+* Thu May 15 2014 Peter Robinson <pbrobinson@fedoraproject.org> 29.0.1-3
+- Add upstream patches for aarch64 support
+
+* Thu May 15 2014 Martin Stransky <stransky@redhat.com> - 29.0.1-2
+- Fixed rhbz#1098090 - Enable plugin-container for nspluginwrapper
+
+* Wed May 14 2014 Martin Stransky <stransky@redhat.com> - 29.0.1-1
+- Update to 29.0.1
+
+* Mon Apr 28 2014 Martin Stransky <stransky@redhat.com> - 29.0-5
+- An updated ppc64le patch (rhbz#1091054)
+
+* Mon Apr 28 2014 Martin Stransky <stransky@redhat.com> - 29.0-4
+- Arm build fixes
+
+* Fri Apr 25 2014 Martin Stransky <stransky@redhat.com> - 29.0-3
+- Build with system ICU
+
+* Thu Apr 24 2014 Martin Stransky <stransky@redhat.com> - 29.0-2
+- Removed unused patch
+
+* Tue Apr 22 2014 Martin Stransky <stransky@redhat.com> - 29.0-1
+- Update to 29.0 Build 1
+
+* Tue Apr  8 2014 Jan Horak <jhorak@redhat.com> - 28.0-4
+- Support for ppc64le architecture
+
 * Wed Mar 19 2014 Martin Stransky <stransky@redhat.com> - 28.0-3
 - Arm build fix
 
