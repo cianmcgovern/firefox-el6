@@ -153,7 +153,6 @@ BuildRequires:  libcurl-devel
 BuildRequires:  libvpx-devel >= %{libvpx_version}
 BuildRequires:  autoconf213
 BuildRequires:  pulseaudio-libs-devel
-BuildRequires:  libicu-devel
 
 Requires:       mozilla-filesystem
 %if %{?system_nss}
@@ -181,6 +180,7 @@ BuildRequires:  libffi-devel
 %endif
 
 Requires:       system-bookmarks
+Requires:       xulrunner
 Obsoletes:      mozilla <= 37:1.7.13
 Provides:       webclient
 
@@ -639,6 +639,8 @@ gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
 %{mozappdir}/browser/crashreporter-override.ini
 %endif
 %{mozappdir}/*.so
+%{mozappdir}/libicu*
+%{mozappdir}/*.chk
 %{mozappdir}/chrome.manifest
 %{mozappdir}/components
 %{mozappdir}/defaults/pref/channel-prefs.js
@@ -667,14 +669,14 @@ gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
 * Tue Apr  8 2014 Jan Horak <jhorak@redhat.com> - 28.0-4
 - Support for ppc64le architecture
 
+* Tue Apr 01 2014 Cian Mc Govern <cian@cianmcgovern.com> - 28.0-2
+- Update for EL6
+
 * Wed Mar 19 2014 Martin Stransky <stransky@redhat.com> - 28.0-3
 - Arm build fix
 
 * Wed Mar 19 2014 Martin Stransky <stransky@redhat.com> - 28.0-2
 - NSS version up, disable arm for now
-
-* Tue Apr 01 2014 Cian Mc Govern <cian@cianmcgovern.com> - 28.0-2
-- Update for EL6
 
 * Tue Mar 18 2014 Martin Stransky <stransky@redhat.com> - 28.0-1
 - Update to 28.0
