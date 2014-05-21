@@ -83,14 +83,14 @@
 
 Summary:        Mozilla Firefox Web browser
 Name:           firefox
-Version:        29.0
-Release:        3%{?pre_tag}%{?dist}
+Version:        29.0.1
+Release:        4%{?pre_tag}%{?dist}
 URL:            http://www.mozilla.org/projects/firefox/
 License:        MPLv1.1 or GPLv2+ or LGPLv2+
 Group:          Applications/Internet
 Source0:        ftp://ftp.mozilla.org/pub/firefox/releases/%{version}%{?pre_version}/source/firefox-%{version}%{?pre_version}.source.tar.bz2
 %if %{build_langpacks}
-Source1:        firefox-langpacks-%{version}%{?pre_version}-20140422.tar.xz
+Source1:        firefox-langpacks-%{version}%{?pre_version}-20140514.tar.xz
 %endif
 Source10:       firefox-mozconfig
 Source11:       firefox-mozconfig-branded
@@ -115,6 +115,12 @@ Patch216:        firefox-duckduckgo.patch
 
 # Upstream patches
 Patch300:        mozilla-ppc64le.patch
+# mbo 962488
+Patch301:        firefox-aarch64-double-convertsion.patch
+# mbo 963023
+Patch302:        firefox-aarch64-libevent.patch
+# mbo 963024
+Patch303:        firefox-aarch64-xpcom.patch
 
 %if %{official_branding}
 # Required by Mozilla Corporation
@@ -236,6 +242,9 @@ cd %{tarballdir}
 %patch300 -p1 -b .ppc64le
 %endif
 %endif
+%patch301 -p1 -b .aarch64-dbl
+%patch302 -p1 -b .aarch64-libevent
+%patch303 -p1 -b .aarch64-xpcom
 
 %if %{official_branding}
 # Required by Mozilla Corporation
@@ -308,20 +317,21 @@ echo "ac_add_options --with-arch=armv7-a" >> .mozconfig
 echo "ac_add_options --with-float-abi=hard" >> .mozconfig
 echo "ac_add_options --with-fpu=vfpv3-d16" >> .mozconfig
 echo "ac_add_options --disable-elf-hack" >> .mozconfig
+echo "ac_add_options --disable-ion" >> .mozconfig
+echo "ac_add_options --disable-yarr-jit" >> .mozconfig
 %endif
 %ifarch armv7hnl
 echo "ac_add_options --with-arch=armv7-a" >> .mozconfig
 echo "ac_add_options --with-float-abi=hard" >> .mozconfig
 echo "ac_add_options --with-fpu=neon" >> .mozconfig
 echo "ac_add_options --disable-elf-hack" >> .mozconfig
+echo "ac_add_options --disable-ion" >> .mozconfig
+echo "ac_add_options --disable-yarr-jit" >> .mozconfig
 %endif
 %ifarch armv5tel
 echo "ac_add_options --with-arch=armv5te" >> .mozconfig
 echo "ac_add_options --with-float-abi=soft" >> .mozconfig
 echo "ac_add_options --disable-elf-hack" >> .mozconfig
-%endif
-
-%ifnarch %{ix86} x86_64
 echo "ac_add_options --disable-ion" >> .mozconfig
 echo "ac_add_options --disable-yarr-jit" >> .mozconfig
 %endif
@@ -354,6 +364,9 @@ esac
 
 cd %{tarballdir}
 
+# Update the various config.guess to upstream release for aarch64 support
+find ./ -name config.guess -exec cp /usr/lib/rpm/config.guess {} ';'
+
 # -fpermissive is needed to build with gcc 4.6+ which has become stricter
 # 
 # Mozilla builds with -Wall with exception of a few warnings which show up
@@ -370,7 +383,7 @@ MOZ_OPT_FLAGS=$(echo "$MOZ_OPT_FLAGS" | %{__sed} -e 's/-O2//')
 %ifarch s390
 MOZ_OPT_FLAGS=$(echo "$MOZ_OPT_FLAGS" | %{__sed} -e 's/-g/-g1/')
 %endif
-%ifarch s390 %{arm} ppc
+%ifarch s390 %{arm} ppc aarch64
 MOZ_LINK_FLAGS="-Wl,--no-keep-memory -Wl,--reduce-memory-overheads"
 %endif
 export CFLAGS=$MOZ_OPT_FLAGS
@@ -383,7 +396,7 @@ export LIBDIR='%{_libdir}'
 MOZ_SMP_FLAGS=-j1
 # On x86 architectures, Mozilla can build up to 4 jobs at once in parallel,
 # however builds tend to fail on other arches when building in parallel.
-%ifarch %{ix86} x86_64 ppc ppc64 ppc64le
+%ifarch %{ix86} x86_64 ppc ppc64 ppc64le aarch64
 [ -z "$RPM_BUILD_NCPUS" ] && \
      RPM_BUILD_NCPUS="`/usr/bin/getconf _NPROCESSORS_ONLN`"
 [ "$RPM_BUILD_NCPUS" -ge 2 ] && MOZ_SMP_FLAGS=-j2
@@ -657,6 +670,24 @@ gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
 #---------------------------------------------------------------------
 
 %changelog
+* Tue May 20 2014 Martin Stransky <stransky@redhat.com> - 29.0.1-4
+- Enabled necko-wifi
+
+* Thu May 15 2014 Peter Robinson <pbrobinson@fedoraproject.org> 29.0.1-3
+- Add upstream patches for aarch64 support
+
+* Thu May 15 2014 Martin Stransky <stransky@redhat.com> - 29.0.1-2
+- Fixed rhbz#1098090 - Enable plugin-container for nspluginwrapper
+
+* Wed May 14 2014 Martin Stransky <stransky@redhat.com> - 29.0.1-1
+- Update to 29.0.1
+
+* Mon Apr 28 2014 Martin Stransky <stransky@redhat.com> - 29.0-5
+- An updated ppc64le patch (rhbz#1091054)
+
+* Mon Apr 28 2014 Martin Stransky <stransky@redhat.com> - 29.0-4
+- Arm build fixes
+
 * Fri Apr 25 2014 Martin Stransky <stransky@redhat.com> - 29.0-3
 - Build with system ICU
 
