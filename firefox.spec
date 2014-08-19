@@ -2,7 +2,7 @@
 %define system_nss        0
 
 # Use system sqlite?
-%if 0%{?fedora} < 19
+%if 0%{?fedora} < 20
 %define system_sqlite     0
 %define system_ffi        0
 %else
@@ -83,14 +83,14 @@
 
 Summary:        Mozilla Firefox Web browser
 Name:           firefox
-Version:        29.0.1
-Release:        4%{?pre_tag}%{?dist}
+Version:        31.0
+Release:        2%{?pre_tag}%{?dist}
 URL:            http://www.mozilla.org/projects/firefox/
 License:        MPLv1.1 or GPLv2+ or LGPLv2+
 Group:          Applications/Internet
 Source0:        ftp://ftp.mozilla.org/pub/firefox/releases/%{version}%{?pre_version}/source/firefox-%{version}%{?pre_version}.source.tar.bz2
 %if %{build_langpacks}
-Source1:        firefox-langpacks-%{version}%{?pre_version}-20140514.tar.xz
+Source1:        firefox-langpacks-%{version}%{?pre_version}-20140717.tar.xz
 %endif
 Source10:       firefox-mozconfig
 Source11:       firefox-mozconfig-branded
@@ -110,17 +110,11 @@ Patch19:        xulrunner-24.0-s390-inlines.patch
 # Fedora specific patches
 # Unable to install addons from https pages
 Patch204:        rhbz-966424.patch
-Patch215:        firefox-15.0-enable-addons.patch
+Patch215:        firefox-enable-addons.patch
 Patch216:        firefox-duckduckgo.patch
 
 # Upstream patches
-Patch300:        mozilla-ppc64le.patch
-# mbo 962488
-Patch301:        firefox-aarch64-double-convertsion.patch
-# mbo 963023
-Patch302:        firefox-aarch64-libevent.patch
-# mbo 963024
-Patch303:        firefox-aarch64-xpcom.patch
+Patch300:        mozilla-858919.patch
 
 %if %{official_branding}
 # Required by Mozilla Corporation
@@ -237,14 +231,7 @@ cd %{tarballdir}
 %patch216 -p1 -b .duckduckgo
 
 # Upstream patches
-%ifarch ppc64le
-%if 0%{?fedora} > 20
-%patch300 -p1 -b .ppc64le
-%endif
-%endif
-%patch301 -p1 -b .aarch64-dbl
-%patch302 -p1 -b .aarch64-libevent
-%patch303 -p1 -b .aarch64-xpcom
+%patch300 -p1 -b .858919
 
 %if %{official_branding}
 # Required by Mozilla Corporation
@@ -285,7 +272,7 @@ echo "ac_add_options --enable-system-ffi" >> .mozconfig
 %endif
 
 %if %{?enable_gstreamer}
-echo "ac_add_options --enable-gstreamer" >> .mozconfig
+echo "ac_add_options --enable-gstreamer=1.0" >> .mozconfig
 %else
 echo "ac_add_options --disable-gstreamer" >> .mozconfig
 %endif
@@ -557,11 +544,6 @@ echo -e "\nWARNING : This %{name} %{version} %{?mycomment} RPM is not an officia
 echo -e "Fedora / Red Hat build and it overrides the official one."
 echo -e "Don't file bugs on Fedora Project nor Red Hat.\n"
 
-%if %{?fedora}%{!?fedora:99} <= 17
-echo -e "WARNING : Fedora %{fedora} is now EOL :"
-echo -e "You should consider upgrading to a supported release.\n"
-%endif
-
 # Moves defaults/preferences to browser/defaults/preferences in Fedora 19+
 %if 0%{?fedora} >= 19
 %pretrans -p <lua>
@@ -670,6 +652,27 @@ gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
 #---------------------------------------------------------------------
 
 %changelog
+* Wed Jul 30 2014 Martin Stransky <stransky@redhat.com> - 31.0-2
+- Added patch for mozbz#858919
+
+* Thu Jul 17 2014 Martin Stransky <stransky@redhat.com> - 31.0-1
+- Update to 31.0 build 2
+
+* Wed Jun 11 2014 Martin Stransky <stransky@redhat.com> - 30.0-4
+- Updated NSPR version
+
+* Sat Jun 07 2014 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 30.0-3
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_21_Mass_Rebuild
+
+* Thu Jun 5 2014 Martin Stransky <stransky@redhat.com> - 30.0-2
+- Enable gstreamer 1.0
+
+* Wed Jun 4 2014 Martin Stransky <stransky@redhat.com> - 30.0-1
+- Update to 30.0 build 1
+
+* Fri May 23 2014 Martin Stransky <stransky@redhat.com> - 29.0.1-5
+- Added a build fix for ppc64 - rhbz#1100495
+
 * Tue May 20 2014 Martin Stransky <stransky@redhat.com> - 29.0.1-4
 - Enabled necko-wifi
 
