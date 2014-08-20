@@ -180,7 +180,6 @@ BuildRequires:  libffi-devel
 %endif
 
 Requires:       system-bookmarks
-Requires:       xulrunner
 Obsoletes:      mozilla <= 37:1.7.13
 Provides:       webclient
 
@@ -272,7 +271,7 @@ echo "ac_add_options --enable-system-ffi" >> .mozconfig
 %endif
 
 %if %{?enable_gstreamer}
-echo "ac_add_options --enable-gstreamer=1.0" >> .mozconfig
+echo "ac_add_options --enable-gstreamer" >> .mozconfig
 %else
 echo "ac_add_options --disable-gstreamer" >> .mozconfig
 %endif
@@ -634,7 +633,6 @@ gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
 %{mozappdir}/browser/crashreporter-override.ini
 %endif
 %{mozappdir}/*.so
-%{mozappdir}/libicu*
 %{mozappdir}/*.chk
 %{mozappdir}/chrome.manifest
 %{mozappdir}/components
